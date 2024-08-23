@@ -153,7 +153,7 @@ export const createTokenBridge = async (
   const l1TxReceipt = new L1TransactionReceipt(receipt)
   const messages = await l1TxReceipt.getL1ToL2Messages(l2Provider)
   const messageResults = await Promise.all(
-    messages.map(message => message.waitForStatus())
+    messages.map(message => message.waitForStatus(undefined,3600000))
   )
 
   // if both tickets are not redeemed log it and exit
@@ -627,7 +627,7 @@ export const registerGateway = async (
 
   // wait for execution of ticket
   const message = (await receipt.getL1ToL2Messages(l2Provider))[0]
-  const messageResult = await message.waitForStatus()
+  const messageResult = await message.waitForStatus(undefined,3600000)
   if (messageResult.status !== L1ToL2MessageStatus.REDEEMED) {
     console.log(
       `Retryable ticket (ID ${message.retryableCreationId}) status: ${
