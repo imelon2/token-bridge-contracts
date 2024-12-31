@@ -194,8 +194,8 @@ export const setupTokenBridgeInLocalEnv = async () => {
   const l1TokenBridgeCreatorAddress = l1TokenBridgeCreator.address
   const retryableSenderAddress = retryableSender.address
 
-  parentDeployer.destroy()
-  childDeployer.destroy()
+  await parentDeployer.destroy()
+  await childDeployer.destroy()
   return {
     l1Network,
     l2Network,
@@ -290,8 +290,8 @@ export const getLocalNetworks = async (
     depositTimeout: 900000,
   }
 
-  l1Provider.destroy()
-  l2Provider.destroy()
+  await l1Provider.destroy()
+  await l2Provider.destroy()
   return {
     l1Network,
     l2Network,
