@@ -299,6 +299,8 @@ export const getLocalNetworks = async (
 }
 
 async function main() {
+  console.log("is ms-http-ws branch?");
+  
   const {
     l1Network,
     l2Network,
@@ -315,6 +317,8 @@ async function main() {
       2
     )
   )
+
+  
   console.log(NETWORK_FILE + ' updated')
 }
 
