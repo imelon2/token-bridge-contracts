@@ -318,4 +318,7 @@ async function main() {
   console.log(NETWORK_FILE + ' updated')
 }
 
-main().then(() => console.log('Done.'))
+main().then(() => {
+  console.log('Done.')
+  process.exit(0)
+})
