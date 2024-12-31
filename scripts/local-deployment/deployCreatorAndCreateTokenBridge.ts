@@ -319,6 +319,6 @@ async function main() {
 }
 
 main().then(() => {
-  console.log('Done.')
+  console.log('Done >>> token bridge')
   process.exit(0)
 })
