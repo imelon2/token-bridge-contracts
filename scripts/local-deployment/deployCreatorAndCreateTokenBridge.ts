@@ -194,6 +194,8 @@ export const setupTokenBridgeInLocalEnv = async () => {
   const l1TokenBridgeCreatorAddress = l1TokenBridgeCreator.address
   const retryableSenderAddress = retryableSender.address
 
+  parentDeployer.destroy()
+  childDeployer.destroy()
   return {
     l1Network,
     l2Network,
@@ -287,6 +289,9 @@ export const getLocalNetworks = async (
     nitroGenesisL1Block: 0,
     depositTimeout: 900000,
   }
+
+  l1Provider.destroy()
+  l2Provider.destroy()
   return {
     l1Network,
     l2Network,
