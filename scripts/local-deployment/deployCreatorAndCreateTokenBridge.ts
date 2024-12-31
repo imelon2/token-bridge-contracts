@@ -66,11 +66,13 @@ export const setupTokenBridgeInLocalEnv = async () => {
   // create deployer wallets
   const parentDeployer = new ethers.Wallet(
     parentDeployerKey,
-    new ethers.providers.JsonRpcProvider(parentRpc)
+    // new ethers.providers.JsonRpcProvider(parentRpc)
+    new ethers.providers.WebSocketProvider(parentRpc)
   )
   const childDeployer = new ethers.Wallet(
     childDeployerKey,
-    new ethers.providers.JsonRpcProvider(childRpc)
+    // new ethers.providers.JsonRpcProvider(childRpc)
+    new ethers.providers.WebSocketProvider(childRpc)
   )
 
   const { l1Network, l2Network: coreL2Network } = await getLocalNetworks(
@@ -208,8 +210,10 @@ export const getLocalNetworks = async (
   l1Network: L1Network
   l2Network: Omit<L2Network, 'tokenBridge'>
 }> => {
-  const l1Provider = new JsonRpcProvider(l1Url)
-  const l2Provider = new JsonRpcProvider(l2Url)
+  // const l1Provider = new JsonRpcProvider(l1Url)
+  // const l2Provider = new JsonRpcProvider(l2Url)
+  const l1Provider = new ethers.providers.WebSocketProvider(l1Url)
+  const l2Provider = new ethers.providers.WebSocketProvider(l2Url)
   let deploymentData: string
 
   let data = {
