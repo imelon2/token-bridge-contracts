@@ -110,7 +110,7 @@ export const setupTokenBridgeInLocalEnv = async () => {
   }
 
   // prerequisite - deploy L1 creator and set templates
-  console.log('Deploying L1TokenBridgeCreator')
+  console.log('Deploying L1TokenBridgeCreator >> CHOI ms-http-ws')
 
   let l1Weth = process.env['PARENT_WETH_OVERRIDE']
   if (l1Weth === undefined || l1Weth === '') {
@@ -300,7 +300,7 @@ export const getLocalNetworks = async (
 
 async function main() {
   console.log("is ms-http-ws branch?");
-  
+
   const {
     l1Network,
     l2Network,
