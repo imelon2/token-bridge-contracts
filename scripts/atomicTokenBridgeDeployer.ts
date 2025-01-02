@@ -152,8 +152,10 @@ export const createTokenBridge = async (
   /// wait for execution of both tickets
   const l1TxReceipt = new L1TransactionReceipt(receipt)
   const messages = await l1TxReceipt.getL1ToL2Messages(l2Provider)
+  const timeout = 3600000
+  console.log(`timeout: ${timeout}`);
   const messageResults = await Promise.all(
-    messages.map(message => message.waitForStatus(undefined,3600000))
+    messages.map(message => message.waitForStatus(undefined,timeout))
   )
 
   // if both tickets are not redeemed log it and exit
