@@ -194,8 +194,8 @@ export const setupTokenBridgeInLocalEnv = async () => {
   const l1TokenBridgeCreatorAddress = l1TokenBridgeCreator.address
   const retryableSenderAddress = retryableSender.address
 
-  await parentDeployer.destroy()
-  await childDeployer.destroy()
+  // await parentDeployer.destroy()
+  // await childDeployer.destroy()
   return {
     l1Network,
     l2Network,
@@ -299,7 +299,7 @@ export const getLocalNetworks = async (
 }
 
 async function main() {
-  console.log("is ms-http-ws branch?");
+  console.log('is ms-http-ws branch?')
 
   const {
     l1Network,
@@ -318,7 +318,6 @@ async function main() {
     )
   )
 
-  
   console.log(NETWORK_FILE + ' updated')
 }
 
