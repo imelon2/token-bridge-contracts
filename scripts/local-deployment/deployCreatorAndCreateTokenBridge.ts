@@ -62,17 +62,17 @@ export const setupTokenBridgeInLocalEnv = async () => {
 
   // if no ROLLUP_ADDRESS is defined, it will be pulled from local container
   const rollupAddress = process.env['ROLLUP_ADDRESS'] as string
-
+   // 🥳
   // create deployer wallets
   const parentDeployer = new ethers.Wallet(
     parentDeployerKey,
-    // new ethers.providers.JsonRpcProvider(parentRpc)
-    new ethers.providers.WebSocketProvider(parentRpc)
+    new ethers.providers.JsonRpcProvider(parentRpc)
+    // new ethers.providers.WebSocketProvider(parentRpc)
   )
   const childDeployer = new ethers.Wallet(
     childDeployerKey,
-    // new ethers.providers.JsonRpcProvider(childRpc)
-    new ethers.providers.WebSocketProvider(childRpc)
+    new ethers.providers.JsonRpcProvider(childRpc)
+    // new ethers.providers.WebSocketProvider(childRpc)
   )
 
   const { l1Network, l2Network: coreL2Network } = await getLocalNetworks(
@@ -216,12 +216,13 @@ export const getLocalNetworks = async (
   l1Network: L1Network
   l2Network: Omit<L2Network, 'tokenBridge'>
 }> => {
-  // const l1Provider = new JsonRpcProvider(l1Url)
-  // const l2Provider = new JsonRpcProvider(l2Url)
+  
+  const l1Provider = new JsonRpcProvider(l1Url)
+  const l2Provider = new JsonRpcProvider(l2Url)
   console.log('RUN getLocalNetworks >>> CHOI')
-
-  const l1Provider = new ethers.providers.WebSocketProvider(l1Url)
-  const l2Provider = new ethers.providers.WebSocketProvider(l2Url)
+  // 🥳
+  // const l1Provider = new ethers.providers.WebSocketProvider(l1Url)
+  // const l2Provider = new ethers.providers.WebSocketProvider(l2Url)
   let deploymentData: string
 
   let data = {
@@ -296,8 +297,9 @@ export const getLocalNetworks = async (
     depositTimeout: 900000,
   }
 
-  await l1Provider.destroy()
-  await l2Provider.destroy()
+  // 🥳
+  // await l1Provider.destroy()
+  // await l2Provider.destroy()
   return {
     l1Network,
     l2Network,
