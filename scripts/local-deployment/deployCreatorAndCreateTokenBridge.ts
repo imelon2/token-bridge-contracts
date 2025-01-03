@@ -328,7 +328,7 @@ async function main() {
     console.log(NETWORK_FILE + ' updated')
   } catch (error) {
     console.log("deployCreatorAndCreateTokenBridge main error");
-    return error
+    throw new Error(error as string)
   }
 }
 
