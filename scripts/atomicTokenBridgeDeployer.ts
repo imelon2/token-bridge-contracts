@@ -185,28 +185,32 @@ export const createTokenBridge = async (
     )
   console.log('L2AtomicTokenBridgeFactory', l2AtomicTokenBridgeFactory.address)
 
-  /// fetch deployment addresses from registry
+  try {
+    /// fetch deployment addresses from registry
+    
+    console.log(">>> l1Deployment");
+    const l1Deployment = await l1TokenBridgeCreator.inboxToL1Deployment(inbox)
+    console.log(l1Deployment);
+    console.log(">>> 2Deployment");
+    const l2Deployment = await l1TokenBridgeCreator.inboxToL2Deployment(inbox)
+    console.log(l1Deployment);
+    
+    /// fetch l1 multicall and l1 proxy admin from creator
+    console.log(">>> l1TokenBridgeCreator.l1Multicall");
+    const l1MultiCall = await l1TokenBridgeCreator.l1Multicall()
+    console.log(l1MultiCall);
+    
+    console.log(">>> IInboxProxyAdmin__factory.getProxyAdmin");
+    const l1ProxyAdmin = await IInboxProxyAdmin__factory.connect(
+      inbox,
+      l1Signer.provider!
+    ).getProxyAdmin()
+    console.log(l1ProxyAdmin);
   
-  console.log(">>> l1Deployment");
-  const l1Deployment = await l1TokenBridgeCreator.inboxToL1Deployment(inbox)
-  console.log(l1Deployment);
-  console.log(">>> 2Deployment");
-  const l2Deployment = await l1TokenBridgeCreator.inboxToL2Deployment(inbox)
-  console.log(l1Deployment);
-  
-  /// fetch l1 multicall and l1 proxy admin from creator
-  console.log(">>> l1TokenBridgeCreator.l1Multicall");
-  const l1MultiCall = await l1TokenBridgeCreator.l1Multicall()
-  console.log(l1MultiCall);
-  
-  console.log(">>> IInboxProxyAdmin__factory.getProxyAdmin");
-  const l1ProxyAdmin = await IInboxProxyAdmin__factory.connect(
-    inbox,
-    l1Signer.provider!
-  ).getProxyAdmin()
-  console.log(l1ProxyAdmin);
-
-  return { l1Deployment, l2Deployment, l1MultiCall, l1ProxyAdmin }
+    return { l1Deployment, l2Deployment, l1MultiCall, l1ProxyAdmin }
+  } catch (error) {
+    throw new Error(error as string)
+  }
 }
 
 /**

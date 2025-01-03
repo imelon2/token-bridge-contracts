@@ -7,3 +7,4 @@ slither.db.json
 lib
 out
 scripts/local-deployment/deployCreatorAndCreateTokenBridge.ts
+scripts/atomicTokenBridgeDeployer.ts
