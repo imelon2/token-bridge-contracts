@@ -152,6 +152,7 @@ export const setupTokenBridgeInLocalEnv = async () => {
       coreL2Network.ethBridge.rollup,
       rollupOwnerAddress
     )
+  console.log('SUCCESS createTokenBrige >>> CHOI')
 
   // register weth gateway if it exists
   if (l1Deployment.wethGateway !== ethers.constants.AddressZero) {
@@ -160,6 +161,8 @@ export const setupTokenBridgeInLocalEnv = async () => {
       parentDeployer
     ).owner()
 
+    console.log('RUN registerGateway >>> CHOI')
+    
     await registerGateway(
       new Wallet(rollupOwnerKey, parentDeployer.provider!),
       childDeployer.provider!,
@@ -169,6 +172,7 @@ export const setupTokenBridgeInLocalEnv = async () => {
       [l1Deployment.wethGateway]
     )
   }
+  console.log('SUCCESS registerGateway >>> CHOI')
 
   const l2Network: L2Network = {
     ...coreL2Network,
@@ -214,6 +218,8 @@ export const getLocalNetworks = async (
 }> => {
   // const l1Provider = new JsonRpcProvider(l1Url)
   // const l2Provider = new JsonRpcProvider(l2Url)
+  console.log('RUN getLocalNetworks >>> CHOI')
+
   const l1Provider = new ethers.providers.WebSocketProvider(l1Url)
   const l2Provider = new ethers.providers.WebSocketProvider(l2Url)
   let deploymentData: string
@@ -299,7 +305,7 @@ export const getLocalNetworks = async (
 }
 
 async function main() {
-  console.log('is ms-http-ws branch?')
+  console.log('RUN Token Bridge Script >>> CHOI')
 
   const {
     l1Network,
@@ -322,6 +328,10 @@ async function main() {
 }
 
 main().then(() => {
-  console.log('Done >>> token bridge')
-  process.exit(0)
+  try {
+    console.log('Done >>> token bridge')
+    process.exit(0)
+  } catch (error) {
+    console.error(error)
+  }
 })

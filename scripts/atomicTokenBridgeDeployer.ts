@@ -137,6 +137,7 @@ export const createTokenBridge = async (
   }
 
   /// do it - create token bridge
+  console.log('RUN createTokenBridge TX >>> CHOI')
   const receipt = await (
     await l1TokenBridgeCreator.createTokenBridge(
       inbox,
@@ -584,7 +585,9 @@ export const registerGateway = async (
     throw new Error('L2GatewayRouter not properly initialized')
   }
 
+  
   const executorAddress = await l1Executor.getAddress()
+  console.log('RUN executorAddress >>> ' + executorAddress)
 
   const buildCall = (params: OmitTyped<L1ToL2MessageGasParams, 'deposit'>) => {
     const routerCalldata =
@@ -617,6 +620,8 @@ export const registerGateway = async (
     l1Executor.provider!
   )
 
+  console.log('RUN setGateways by Executor TX >>> CHOI')
+
   const receipt = new L1ContractCallTransactionReceipt(
     await (
       await l1Executor.sendTransaction({
@@ -629,7 +634,9 @@ export const registerGateway = async (
 
   // wait for execution of ticket
   const message = (await receipt.getL1ToL2Messages(l2Provider))[0]
-  const messageResult = await message.waitForStatus(undefined,3600000)
+  const timeout = 3600000
+  console.log(`registerGateway timeout: ${timeout}`);
+  const messageResult = await message.waitForStatus(undefined,timeout)
   if (messageResult.status !== L1ToL2MessageStatus.REDEEMED) {
     console.log(
       `Retryable ticket (ID ${message.retryableCreationId}) status: ${
