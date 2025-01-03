@@ -305,26 +305,31 @@ export const getLocalNetworks = async (
 }
 
 async function main() {
-  console.log('RUN Token Bridge Script >>> CHOI')
-
-  const {
-    l1Network,
-    l2Network,
-    l1TokenBridgeCreatorAddress: l1TokenBridgeCreator,
-    retryableSenderAddress: retryableSender,
-  } = await setupTokenBridgeInLocalEnv()
-
-  const NETWORK_FILE = 'network.json'
-  fs.writeFileSync(
-    NETWORK_FILE,
-    JSON.stringify(
-      { l1Network, l2Network, l1TokenBridgeCreator, retryableSender },
-      null,
-      2
+  try {
+    console.log('RUN Token Bridge Script >>> CHOI')
+  
+    const {
+      l1Network,
+      l2Network,
+      l1TokenBridgeCreatorAddress: l1TokenBridgeCreator,
+      retryableSenderAddress: retryableSender,
+    } = await setupTokenBridgeInLocalEnv()
+  
+    const NETWORK_FILE = 'network.json'
+    fs.writeFileSync(
+      NETWORK_FILE,
+      JSON.stringify(
+        { l1Network, l2Network, l1TokenBridgeCreator, retryableSender },
+        null,
+        2
+      )
     )
-  )
-
-  console.log(NETWORK_FILE + ' updated')
+  
+    console.log(NETWORK_FILE + ' updated')
+  } catch (error) {
+    console.log("deployCreatorAndCreateTokenBridge main error");
+    return error
+  }
 }
 
 main().then(() => {

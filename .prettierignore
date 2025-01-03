@@ -6,3 +6,4 @@ dist
 slither.db.json
 lib
 out
+scripts/local-deployment/deployCreatorAndCreateTokenBridge.ts
