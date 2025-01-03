@@ -365,7 +365,10 @@ export const deployL1TokenBridgeCreator = async (
     l1Deployer
   )
   const upgradeExecutor = await upgradeExecutorFactory.deploy()
-
+  console.log("Wait deploy upgradeExecutor");
+  await upgradeExecutor.deployed()
+  console.log("Deployed >>");
+  
   const l1Templates = {
     routerTemplate: routerTemplate.address,
     standardGatewayTemplate: standardGatewayTemplate.address,
