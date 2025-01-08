@@ -1,5 +1,5 @@
 import { Wallet, ethers } from 'ethers'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
 import { L1Network, L2Network, addCustomNetwork } from '@arbitrum/sdk'
 import { Bridge__factory } from '@arbitrum/sdk/dist/lib/abi/factories/Bridge__factory'
 import { RollupAdminLogic__factory } from '@arbitrum/sdk/dist/lib/abi/factories/RollupAdminLogic__factory'
@@ -66,12 +66,13 @@ export const setupTokenBridgeInLocalEnv = async () => {
   // create deployer wallets
   const parentDeployer = new ethers.Wallet(
     parentDeployerKey,
-    new ethers.providers.JsonRpcProvider(parentRpc)
+    new ethers.providers.StaticJsonRpcProvider({url:parentRpc,timeout:1000})
     // new ethers.providers.WebSocketProvider(parentRpc)
   )
   const childDeployer = new ethers.Wallet(
     childDeployerKey,
-    new ethers.providers.JsonRpcProvider(childRpc)
+    new ethers.providers.StaticJsonRpcProvider({url:childRpc,timeout:1000})
+    // new ethers.providers.JsonRpcProvider(childRpc)
     // new ethers.providers.WebSocketProvider(childRpc)
   )
 
@@ -217,8 +218,11 @@ export const getLocalNetworks = async (
   l2Network: Omit<L2Network, 'tokenBridge'>
 }> => {
   
-  const l1Provider = new JsonRpcProvider(l1Url)
-  const l2Provider = new JsonRpcProvider(l2Url)
+  const l1Provider = new StaticJsonRpcProvider({url:l1Url,timeout:1000})
+  const l2Provider =  new StaticJsonRpcProvider({url:l2Url,timeout:1000})
+
+  // const l1Provider = new JsonRpcProvider(l1Url)
+  // const l2Provider = new JsonRpcProvider(l2Url)
   console.log('RUN getLocalNetworks >>> CHOI')
   // 🥳
   // const l1Provider = new ethers.providers.WebSocketProvider(l1Url)
