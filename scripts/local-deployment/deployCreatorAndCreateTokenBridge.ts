@@ -313,6 +313,7 @@ export const getLocalNetworks = async (
 async function main() {
   try {
     console.log('RUN Token Bridge Script >>> CHOI')
+    console.log('Static provider ver >>> CHOI')
   
     const {
       l1Network,
