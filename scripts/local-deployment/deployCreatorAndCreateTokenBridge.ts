@@ -63,15 +63,19 @@ export const setupTokenBridgeInLocalEnv = async () => {
   // if no ROLLUP_ADDRESS is defined, it will be pulled from local container
   const rollupAddress = process.env['ROLLUP_ADDRESS'] as string
    // 🥳
+
+   const _timeout = Number(process.env.ETHERS_TIME_OUT) || 60000
+   console.log("ethers timeout: ",_timeout);
+   
   // create deployer wallets
   const parentDeployer = new ethers.Wallet(
     parentDeployerKey,
-    new ethers.providers.StaticJsonRpcProvider({url:parentRpc,timeout:1000})
+    new ethers.providers.StaticJsonRpcProvider({url:parentRpc,timeout:_timeout})
     // new ethers.providers.WebSocketProvider(parentRpc)
   )
   const childDeployer = new ethers.Wallet(
     childDeployerKey,
-    new ethers.providers.StaticJsonRpcProvider({url:childRpc,timeout:1000})
+    new ethers.providers.StaticJsonRpcProvider({url:childRpc,timeout:_timeout})
     // new ethers.providers.JsonRpcProvider(childRpc)
     // new ethers.providers.WebSocketProvider(childRpc)
   )
@@ -218,8 +222,10 @@ export const getLocalNetworks = async (
   l2Network: Omit<L2Network, 'tokenBridge'>
 }> => {
   
-  const l1Provider = new StaticJsonRpcProvider({url:l1Url,timeout:1000})
-  const l2Provider =  new StaticJsonRpcProvider({url:l2Url,timeout:1000})
+  const _timeout = Number(process.env.ETHERS_TIME_OUT) || 60000
+  console.log("ethers timeout: ",_timeout);
+  const l1Provider = new StaticJsonRpcProvider({url:l1Url,timeout:_timeout})
+  const l2Provider =  new StaticJsonRpcProvider({url:l2Url,timeout:_timeout})
 
   // const l1Provider = new JsonRpcProvider(l1Url)
   // const l2Provider = new JsonRpcProvider(l2Url)
