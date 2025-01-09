@@ -11,7 +11,7 @@ import {
   getEstimateForDeployingFactory,
   registerGateway,
 } from '../atomicTokenBridgeDeployer'
-import { l2Networks } from '@arbitrum/sdk/dist/lib/dataEntities/networks'
+import { getL2Network, l2Networks } from '@arbitrum/sdk/dist/lib/dataEntities/networks'
 import { IOwnable__factory, TestWETH9__factory } from '../../build/types'
 
 const LOCALHOST_L2_RPC = 'http://localhost:8547'
@@ -116,16 +116,18 @@ export const setupTokenBridgeInLocalEnv = async () => {
 
   // prerequisite - deploy L1 creator and set templates
   console.log('Deploying L1TokenBridgeCreator >> CHOI ms-http-ws')
-
   let l1Weth = process.env['PARENT_WETH_OVERRIDE']
+  
   if (l1Weth === undefined || l1Weth === '') {
     const l1WethContract = await new TestWETH9__factory(parentDeployer).deploy(
       'WETH',
       'WETH'
     )
     await l1WethContract.deployed()
-
+    
     l1Weth = l1WethContract.address
+  } else {
+    console.log(">>> SKIP Deploy TestWETH9");
   }
 
   //// run retryable estimate for deploying L2 factory
