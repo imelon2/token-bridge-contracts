@@ -127,7 +127,7 @@ export const setupTokenBridgeInLocalEnv = async () => {
     
     l1Weth = l1WethContract.address
   } else {
-    console.log(">>> SKIP Deploy TestWETH9");
+    console.log('>>> SKIP Deploy TestWETH9: ', `ParentWETH ${l1Weth}`)
   }
 
   //// run retryable estimate for deploying L2 factory
@@ -178,8 +178,9 @@ export const setupTokenBridgeInLocalEnv = async () => {
       [l1Weth],
       [l1Deployment.wethGateway]
     )
+  } else {
+    console.log('>>> SKIP wethGateway registerGateway')
   }
-  console.log('SUCCESS registerGateway >>> CHOI')
 
   const l2Network: L2Network = {
     ...coreL2Network,
