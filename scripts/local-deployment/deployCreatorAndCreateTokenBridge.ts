@@ -1,5 +1,5 @@
 import { Wallet, ethers } from 'ethers'
-import { JsonRpcProvider, StaticJsonRpcProvider } from '@ethersproject/providers'
+import { JsonRpcProvider, WebSocketProvider } from '@ethersproject/providers'
 import { L1Network, L2Network, addCustomNetwork } from '@arbitrum/sdk'
 import { Bridge__factory } from '@arbitrum/sdk/dist/lib/abi/factories/Bridge__factory'
 import { RollupAdminLogic__factory } from '@arbitrum/sdk/dist/lib/abi/factories/RollupAdminLogic__factory'
@@ -11,7 +11,7 @@ import {
   getEstimateForDeployingFactory,
   registerGateway,
 } from '../atomicTokenBridgeDeployer'
-import { getL2Network, l2Networks } from '@arbitrum/sdk/dist/lib/dataEntities/networks'
+import { l2Networks } from '@arbitrum/sdk/dist/lib/dataEntities/networks'
 import { IOwnable__factory, TestWETH9__factory } from '../../build/types'
 
 const LOCALHOST_L2_RPC = 'http://localhost:8547'
@@ -62,22 +62,15 @@ export const setupTokenBridgeInLocalEnv = async () => {
 
   // if no ROLLUP_ADDRESS is defined, it will be pulled from local container
   const rollupAddress = process.env['ROLLUP_ADDRESS'] as string
-   // 🥳
 
-   const _timeout = Number(process.env.ETHERS_TIME_OUT) || 60000
-   console.log("ethers timeout: ",_timeout);
-   
   // create deployer wallets
   const parentDeployer = new ethers.Wallet(
     parentDeployerKey,
-    new ethers.providers.StaticJsonRpcProvider({url:parentRpc,timeout:_timeout})
-    // new ethers.providers.WebSocketProvider(parentRpc)
+    new ethers.providers.WebSocketProvider(parentRpc)
   )
   const childDeployer = new ethers.Wallet(
     childDeployerKey,
-    new ethers.providers.StaticJsonRpcProvider({url:childRpc,timeout:_timeout})
-    // new ethers.providers.JsonRpcProvider(childRpc)
-    // new ethers.providers.WebSocketProvider(childRpc)
+    new ethers.providers.WebSocketProvider(childRpc)
   )
 
   const { l1Network, l2Network: coreL2Network } = await getLocalNetworks(
@@ -115,16 +108,17 @@ export const setupTokenBridgeInLocalEnv = async () => {
   }
 
   // prerequisite - deploy L1 creator and set templates
-  console.log('Deploying L1TokenBridgeCreator >> CHOI ms-http-ws')
+  console.log('Deploying L1TokenBridgeCreator')
+
   let l1Weth = process.env['PARENT_WETH_OVERRIDE']
-  
   if (l1Weth === undefined || l1Weth === '') {
+    console.log('>>> Deploy TestWETH9')
     const l1WethContract = await new TestWETH9__factory(parentDeployer).deploy(
       'WETH',
       'WETH'
     )
     await l1WethContract.deployed()
-    
+
     l1Weth = l1WethContract.address
   } else {
     console.log('>>> SKIP Deploy TestWETH9: ', `ParentWETH ${l1Weth}`)
@@ -159,17 +153,15 @@ export const setupTokenBridgeInLocalEnv = async () => {
       coreL2Network.ethBridge.rollup,
       rollupOwnerAddress
     )
-  console.log('SUCCESS createTokenBrige >>> CHOI')
 
   // register weth gateway if it exists
   if (l1Deployment.wethGateway !== ethers.constants.AddressZero) {
+    console.log('>>> registerGateway wethGateway')
     const upExecAddress = await IOwnable__factory.connect(
       coreL2Network.ethBridge.rollup,
       parentDeployer
     ).owner()
 
-    console.log('RUN registerGateway >>> CHOI')
-    
     await registerGateway(
       new Wallet(rollupOwnerKey, parentDeployer.provider!),
       childDeployer.provider!,
@@ -179,7 +171,7 @@ export const setupTokenBridgeInLocalEnv = async () => {
       [l1Deployment.wethGateway]
     )
   } else {
-    console.log('>>> SKIP wethGateway registerGateway')
+    console.log('>>> SKIP registerGateway wethGateway')
   }
 
   const l2Network: L2Network = {
@@ -206,8 +198,6 @@ export const setupTokenBridgeInLocalEnv = async () => {
   const l1TokenBridgeCreatorAddress = l1TokenBridgeCreator.address
   const retryableSenderAddress = retryableSender.address
 
-  // await parentDeployer.destroy()
-  // await childDeployer.destroy()
   return {
     l1Network,
     l2Network,
@@ -224,18 +214,8 @@ export const getLocalNetworks = async (
   l1Network: L1Network
   l2Network: Omit<L2Network, 'tokenBridge'>
 }> => {
-  
-  const _timeout = Number(process.env.ETHERS_TIME_OUT) || 60000
-  console.log("ethers timeout: ",_timeout);
-  const l1Provider = new StaticJsonRpcProvider({url:l1Url,timeout:_timeout})
-  const l2Provider =  new StaticJsonRpcProvider({url:l2Url,timeout:_timeout})
-
-  // const l1Provider = new JsonRpcProvider(l1Url)
-  // const l2Provider = new JsonRpcProvider(l2Url)
-  console.log('RUN getLocalNetworks >>> CHOI')
-  // 🥳
-  // const l1Provider = new ethers.providers.WebSocketProvider(l1Url)
-  // const l2Provider = new ethers.providers.WebSocketProvider(l2Url)
+  const l1Provider = new WebSocketProvider(l1Url)
+  const l2Provider = new WebSocketProvider(l2Url)
   let deploymentData: string
 
   let data = {
@@ -309,10 +289,6 @@ export const getLocalNetworks = async (
     nitroGenesisL1Block: 0,
     depositTimeout: 900000,
   }
-
-  // 🥳
-  // await l1Provider.destroy()
-  // await l2Provider.destroy()
   return {
     l1Network,
     l2Network,
@@ -320,39 +296,28 @@ export const getLocalNetworks = async (
 }
 
 async function main() {
-  try {
-    console.log('RUN Token Bridge Script >>> CHOI')
-    console.log('Static provider ver >>> CHOI')
-  
-    const {
-      l1Network,
-      l2Network,
-      l1TokenBridgeCreatorAddress: l1TokenBridgeCreator,
-      retryableSenderAddress: retryableSender,
-    } = await setupTokenBridgeInLocalEnv()
-  
-    const NETWORK_FILE = 'network.json'
-    fs.writeFileSync(
-      NETWORK_FILE,
-      JSON.stringify(
-        { l1Network, l2Network, l1TokenBridgeCreator, retryableSender },
-        null,
-        2
-      )
+  console.log('RUN Dkargo Token Bridge Script')
+
+  const {
+    l1Network,
+    l2Network,
+    l1TokenBridgeCreatorAddress: l1TokenBridgeCreator,
+    retryableSenderAddress: retryableSender,
+  } = await setupTokenBridgeInLocalEnv()
+
+  const NETWORK_FILE = 'network.json'
+  fs.writeFileSync(
+    NETWORK_FILE,
+    JSON.stringify(
+      { l1Network, l2Network, l1TokenBridgeCreator, retryableSender },
+      null,
+      2
     )
-  
-    console.log(NETWORK_FILE + ' updated')
-  } catch (error) {
-    console.log("deployCreatorAndCreateTokenBridge main error");
-    throw new Error(error as string)
-  }
+  )
+  console.log(NETWORK_FILE + ' updated')
 }
 
 main().then(() => {
-  try {
-    console.log('Done >>> token bridge')
-    process.exit(0)
-  } catch (error) {
-    console.error(error)
-  }
+  console.log('Dkargo Token Bridge Done.')
+  process.exit(0)
 })

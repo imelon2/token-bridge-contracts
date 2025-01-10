@@ -137,7 +137,6 @@ export const createTokenBridge = async (
   }
 
   /// do it - create token bridge
-  console.log('RUN createTokenBridge TX >>> CHOI')
   const receipt = await (
     await l1TokenBridgeCreator.createTokenBridge(
       inbox,
@@ -153,10 +152,14 @@ export const createTokenBridge = async (
   /// wait for execution of both tickets
   const l1TxReceipt = new L1TransactionReceipt(receipt)
   const messages = await l1TxReceipt.getL1ToL2Messages(l2Provider)
+
   const timeout = 3600000
-  console.log(`timeout: ${timeout}`);
+  console.log(
+    `>>> createTokenBridge with wait delayed message timeout: ${timeout}`
+  )
+
   const messageResults = await Promise.all(
-    messages.map(message => message.waitForStatus(undefined,timeout))
+    messages.map(message => message.waitForStatus(undefined, timeout))
   )
 
   // if both tickets are not redeemed log it and exit
@@ -185,32 +188,18 @@ export const createTokenBridge = async (
     )
   console.log('L2AtomicTokenBridgeFactory', l2AtomicTokenBridgeFactory.address)
 
-  try {
-    /// fetch deployment addresses from registry
-    
-    console.log(">>> l1Deployment");
-    const l1Deployment = await l1TokenBridgeCreator.inboxToL1Deployment(inbox)
-    console.log(l1Deployment);
-    console.log(">>> 2Deployment");
-    const l2Deployment = await l1TokenBridgeCreator.inboxToL2Deployment(inbox)
-    console.log(l1Deployment);
-    
-    /// fetch l1 multicall and l1 proxy admin from creator
-    console.log(">>> l1TokenBridgeCreator.l1Multicall");
-    const l1MultiCall = await l1TokenBridgeCreator.l1Multicall()
-    console.log(l1MultiCall);
-    
-    console.log(">>> IInboxProxyAdmin__factory.getProxyAdmin");
-    const l1ProxyAdmin = await IInboxProxyAdmin__factory.connect(
-      inbox,
-      l1Signer.provider!
-    ).getProxyAdmin()
-    console.log(l1ProxyAdmin);
-  
-    return { l1Deployment, l2Deployment, l1MultiCall, l1ProxyAdmin }
-  } catch (error) {
-    throw new Error(error as string)
-  }
+  /// fetch deployment addresses from registry
+  const l1Deployment = await l1TokenBridgeCreator.inboxToL1Deployment(inbox)
+  const l2Deployment = await l1TokenBridgeCreator.inboxToL2Deployment(inbox)
+
+  /// fetch l1 multicall and l1 proxy admin from creator
+  const l1MultiCall = await l1TokenBridgeCreator.l1Multicall()
+  const l1ProxyAdmin = await IInboxProxyAdmin__factory.connect(
+    inbox,
+    l1Signer.provider!
+  ).getProxyAdmin()
+
+  return { l1Deployment, l2Deployment, l1MultiCall, l1ProxyAdmin }
 }
 
 /**
@@ -379,10 +368,8 @@ export const deployL1TokenBridgeCreator = async (
     l1Deployer
   )
   const upgradeExecutor = await upgradeExecutorFactory.deploy()
-  console.log("Wait deploy upgradeExecutor");
   await upgradeExecutor.deployed()
-  console.log("Deployed >>");
-  
+
   const l1Templates = {
     routerTemplate: routerTemplate.address,
     standardGatewayTemplate: standardGatewayTemplate.address,
@@ -602,9 +589,7 @@ export const registerGateway = async (
     throw new Error('L2GatewayRouter not properly initialized')
   }
 
-  
   const executorAddress = await l1Executor.getAddress()
-  console.log('RUN executorAddress >>> ' + executorAddress)
 
   const buildCall = (params: OmitTyped<L1ToL2MessageGasParams, 'deposit'>) => {
     const routerCalldata =
@@ -637,8 +622,6 @@ export const registerGateway = async (
     l1Executor.provider!
   )
 
-  console.log('RUN setGateways by Executor TX >>> CHOI')
-
   const receipt = new L1ContractCallTransactionReceipt(
     await (
       await l1Executor.sendTransaction({
@@ -652,7 +635,10 @@ export const registerGateway = async (
   // wait for execution of ticket
   const message = (await receipt.getL1ToL2Messages(l2Provider))[0]
   const timeout = 3600000
-  console.log(`registerGateway timeout: ${timeout}`);
+  console.log(
+    `>>> registerGateway with wait delayed message timeout: ${timeout}`
+  )
+
   const messageResult = await message.waitForStatus(undefined,timeout)
   if (messageResult.status !== L1ToL2MessageStatus.REDEEMED) {
     console.log(
