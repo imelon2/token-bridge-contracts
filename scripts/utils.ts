@@ -74,7 +74,8 @@ export async function initialize(
   }
 
   try {
-    await (await contract.initialize(...initializeArgs)).wait()
+    const receipt = await (await contract.initialize(...initializeArgs)).wait()
+    console.log(`initialize ${contractName}:`, receipt.transactionHash)
   } catch (error: any) {
     if (error?.transactionHash) {
       const receipt = await WaitTxReceiptByHash(
