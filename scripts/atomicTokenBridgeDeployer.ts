@@ -45,6 +45,7 @@ import { ContractVerifier } from './contractVerifier'
 import { OmitTyped } from '@arbitrum/sdk/dist/lib/utils/types'
 import { L1ToL2MessageGasParams } from '@arbitrum/sdk/dist/lib/message/L1ToL2MessageCreator'
 import { L1ContractCallTransactionReceipt } from '@arbitrum/sdk/dist/lib/message/L1Transaction'
+import { deployContract, initialize, WaitTxReceiptByHash } from './utils'
 
 /**
  * Dummy non-zero address which is provided to logic contracts initializers
@@ -127,25 +128,61 @@ export const createTokenBridge = async (
   // if fee token is used approve the fee
   const feeToken = await _getFeeToken(inbox, l1Signer.provider!)
   if (feeToken != ethers.constants.AddressZero) {
-    await (
-      await IERC20__factory.connect(feeToken, l1Signer).approve(
-        l1TokenBridgeCreator.address,
-        retryableFee
-      )
-    ).wait()
+    try {
+      await (
+        await IERC20__factory.connect(feeToken, l1Signer).approve(
+          l1TokenBridgeCreator.address,
+          retryableFee
+        )
+      ).wait()
+    } catch (error:any) {
+      if (error?.transactionHash) {
+        const receipt = await WaitTxReceiptByHash(
+          l1Signer.provider!,
+          error.transactionHash,
+          `approve FeeToken`
+        )
+        if (!receipt) {
+          throw error
+        }
+      } else {
+        throw error
+      }
+    }
+
     retryableFee = BigNumber.from(0)
   }
 
   /// do it - create token bridge
-  const receipt = await (
-    await l1TokenBridgeCreator.createTokenBridge(
-      inbox,
-      rollupOwnerAddress,
-      maxGasForContracts,
-      gasPrice,
-      { value: retryableFee }
-    )
-  ).wait()
+  let receipt: ethers.providers.TransactionReceipt
+  
+  try {
+    receipt = await (
+      await l1TokenBridgeCreator.createTokenBridge(
+        inbox,
+        rollupOwnerAddress,
+        maxGasForContracts,
+        gasPrice,
+        { value: retryableFee }
+      )
+    ).wait()
+  } catch (error:any) {
+    if (error?.transactionHash) {
+      const isReceipt = await WaitTxReceiptByHash(
+        l1TokenBridgeCreator.signer.provider!,
+        error.transactionHash,
+        `createTokenBridge l1TokenBridgeCreator`
+      )
+
+      if (!isReceipt) {
+        throw error
+      }
+      
+      receipt = isReceipt
+    } else {
+      throw error
+    }
+  }
 
   console.log('Deployment TX:', receipt.transactionHash)
 
@@ -216,27 +253,26 @@ export const deployL1TokenBridgeCreator = async (
   verifyContracts = false
 ) => {
   /// deploy creator behind proxy
-  const l2MulticallAddressOnL1Fac = await new ArbMulticall2__factory(
-    l1Deployer
-  ).deploy()
-  const l2MulticallAddressOnL1 = await l2MulticallAddressOnL1Fac.deployed()
+  const l2MulticallAddressOnL1Fac = new ArbMulticall2__factory(l1Deployer)
+  const l2MulticallAddressOnL1 = await deployContract(l2MulticallAddressOnL1Fac,"ArbMulticall2",[])
+  // const l2MulticallAddressOnL1 = await l2MulticallAddressOnL1Fac.deployed()
 
-  const l1TokenBridgeCreatorProxyAdmin = await new ProxyAdmin__factory(
-    l1Deployer
-  ).deploy()
-  await l1TokenBridgeCreatorProxyAdmin.deployed()
+  const l1TokenBridgeCreatorProxyAdminFac = new ProxyAdmin__factory(l1Deployer)
+  const l1TokenBridgeCreatorProxyAdmin = await deployContract(l1TokenBridgeCreatorProxyAdminFac,"l1TokenBridgeCreatorProxyAdmin",[])
+  // await l1TokenBridgeCreatorProxyAdmin.deployed()
 
-  const l1TokenBridgeCreatorLogic =
-    await new L1AtomicTokenBridgeCreator__factory(l1Deployer).deploy()
-  await l1TokenBridgeCreatorLogic.deployed()
 
-  const l1TokenBridgeCreatorProxy =
-    await new TransparentUpgradeableProxy__factory(l1Deployer).deploy(
-      l1TokenBridgeCreatorLogic.address,
-      l1TokenBridgeCreatorProxyAdmin.address,
-      '0x'
-    )
-  await l1TokenBridgeCreatorProxy.deployed()
+  const l1TokenBridgeCreatorLogicFac = new L1AtomicTokenBridgeCreator__factory(l1Deployer)
+  const l1TokenBridgeCreatorLogic = await deployContract(l1TokenBridgeCreatorLogicFac,"L1AtomicTokenBridgeCreator",[])
+  // await l1TokenBridgeCreatorLogic.deployed()
+
+  const l1TokenBridgeCreatorProxyFac = new TransparentUpgradeableProxy__factory(l1Deployer)
+  const l1TokenBridgeCreatorProxy = await deployContract(l1TokenBridgeCreatorProxyFac,"l1TokenBridgeCreatorProxy",[
+    l1TokenBridgeCreatorLogic.address,
+    l1TokenBridgeCreatorProxyAdmin.address,
+    '0x'
+  ])
+  // await l1TokenBridgeCreatorProxy.deployed()
 
   const l1TokenBridgeCreator = L1AtomicTokenBridgeCreator__factory.connect(
     l1TokenBridgeCreatorProxy.address,
@@ -244,19 +280,17 @@ export const deployL1TokenBridgeCreator = async (
   )
 
   /// deploy retryable sender behind proxy
-  const retryableSenderLogic = await new L1TokenBridgeRetryableSender__factory(
-    l1Deployer
-  ).deploy()
-  await retryableSenderLogic.deployed()
+  const retryableSenderLogicFac = new L1TokenBridgeRetryableSender__factory(l1Deployer)
+  const retryableSenderLogic = await deployContract(retryableSenderLogicFac,"L1TokenBridgeRetryableSender",[])
+  // await retryableSenderLogic.deployed()
 
-  const retryableSenderProxy = await new TransparentUpgradeableProxy__factory(
-    l1Deployer
-  ).deploy(
+  const retryableSenderProxyFac = new TransparentUpgradeableProxy__factory(l1Deployer)
+  const retryableSenderProxy = await deployContract(retryableSenderProxyFac,"retryableSenderProxy",[
     retryableSenderLogic.address,
     l1TokenBridgeCreatorProxyAdmin.address,
     '0x'
-  )
-  await retryableSenderProxy.deployed()
+  ])
+  // await retryableSenderProxy.deployed()
 
   const retryableSender = L1TokenBridgeRetryableSender__factory.connect(
     retryableSenderProxy.address,
@@ -264,111 +298,138 @@ export const deployL1TokenBridgeCreator = async (
   )
 
   // initialize retryable sender logic contract
-  await (await retryableSenderLogic.initialize()).wait()
+  await initialize(retryableSenderLogic,"L1TokenBridgeRetryableSender",[])
 
   /// init creator
-  await (await l1TokenBridgeCreator.initialize(retryableSender.address)).wait()
+  await initialize(l1TokenBridgeCreator,"l1TokenBridgeCreatorProxy",[retryableSender.address])
 
   /// deploy L1 logic contracts. Initialize them with dummy data
-  const routerTemplate = await new L1GatewayRouter__factory(l1Deployer).deploy()
-  await routerTemplate.deployed()
-  await (
-    await routerTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD
-    )
-  ).wait()
+  const routerTemplateFac = new L1GatewayRouter__factory(l1Deployer)
+  const routerTemplate = await deployContract(routerTemplateFac,"L1GatewayRouter",[])
+  // await routerTemplate.deployed()
 
-  const standardGatewayTemplate = await new L1ERC20Gateway__factory(
-    l1Deployer
-  ).deploy()
-  await standardGatewayTemplate.deployed()
-  await (
-    await standardGatewayTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ethers.utils.hexZeroPad('0x01', 32),
-      ADDRESS_DEAD
-    )
-  ).wait()
+  await initialize(routerTemplate,"L1GatewayRouter",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
 
-  const customGatewayTemplate = await new L1CustomGateway__factory(
-    l1Deployer
-  ).deploy()
-  await customGatewayTemplate.deployed()
-  await (
-    await customGatewayTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD
-    )
-  ).wait()
+  const standardGatewayTemplateFac = new L1ERC20Gateway__factory(l1Deployer)
+  const standardGatewayTemplate = await deployContract(standardGatewayTemplateFac,"L1ERC20Gateway",[])
+  // await standardGatewayTemplate.deployed()
 
-  const wethGatewayTemplate = await new L1WethGateway__factory(
-    l1Deployer
-  ).deploy()
-  await wethGatewayTemplate.deployed()
-  await (
-    await wethGatewayTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD
-    )
-  ).wait()
+  await initialize(standardGatewayTemplate,"L1ERC20Gateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ethers.utils.hexZeroPad('0x01', 32),
+    ADDRESS_DEAD
+  ])
 
-  const feeTokenBasedRouterTemplate = await new L1OrbitGatewayRouter__factory(
-    l1Deployer
-  ).deploy()
-  await feeTokenBasedRouterTemplate.deployed()
-  await (
-    await feeTokenBasedRouterTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD
-    )
-  ).wait()
+  const customGatewayTemplateFac = new L1CustomGateway__factory(l1Deployer)
+  const customGatewayTemplate = await deployContract(customGatewayTemplateFac,"L1CustomGateway",[])
+  await initialize(customGatewayTemplate,"L1CustomGateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
 
-  const feeTokenBasedStandardGatewayTemplate =
-    await new L1OrbitERC20Gateway__factory(l1Deployer).deploy()
-  await feeTokenBasedStandardGatewayTemplate.deployed()
-  await (
-    await feeTokenBasedStandardGatewayTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ethers.utils.hexZeroPad('0x01', 32),
-      ADDRESS_DEAD
-    )
-  ).wait()
 
-  const feeTokenBasedCustomGatewayTemplate =
-    await new L1OrbitCustomGateway__factory(l1Deployer).deploy()
-  await feeTokenBasedCustomGatewayTemplate.deployed()
-  await (
-    await feeTokenBasedCustomGatewayTemplate.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD
-    )
-  ).wait()
+  const wethGatewayTemplateFac = new L1WethGateway__factory(l1Deployer)
+  const wethGatewayTemplate = await deployContract(wethGatewayTemplateFac,"L1WethGateway",[])
+  await initialize(wethGatewayTemplate,"L1WethGateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
 
+
+  const feeTokenBasedRouterTemplateFac = new L1OrbitGatewayRouter__factory(l1Deployer)
+  const feeTokenBasedRouterTemplate = await deployContract(feeTokenBasedRouterTemplateFac,"L1OrbitGatewayRouter",[])
+  await initialize(feeTokenBasedRouterTemplate,"L1OrbitGatewayRouter",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
+  // const feeTokenBasedRouterTemplate = await new L1OrbitGatewayRouter__factory(
+  //   l1Deployer
+  // ).deploy()
+  // await feeTokenBasedRouterTemplate.deployed()
+  // await (
+  //   await feeTokenBasedRouterTemplate.initialize(
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD
+  //   )
+  // ).wait()
+
+
+  const feeTokenBasedStandardGatewayTemplateFac = new L1OrbitERC20Gateway__factory(l1Deployer)
+  const feeTokenBasedStandardGatewayTemplate = await deployContract(feeTokenBasedStandardGatewayTemplateFac,"L1OrbitERC20Gateway",[])
+  await initialize(feeTokenBasedStandardGatewayTemplate,"L1OrbitERC20Gateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ethers.utils.hexZeroPad('0x01', 32),
+    ADDRESS_DEAD
+  ])
+  // const feeTokenBasedStandardGatewayTemplate =
+  //   await new L1OrbitERC20Gateway__factory(l1Deployer).deploy()
+  // await feeTokenBasedStandardGatewayTemplate.deployed()
+  // await (
+  //   await feeTokenBasedStandardGatewayTemplate.initialize(
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ethers.utils.hexZeroPad('0x01', 32),
+      // ADDRESS_DEAD
+  //   )
+  // ).wait()
+
+  const feeTokenBasedCustomGatewayTemplateFac = new L1OrbitCustomGateway__factory(l1Deployer)
+  const feeTokenBasedCustomGatewayTemplate = await deployContract(feeTokenBasedCustomGatewayTemplateFac,"L1OrbitCustomGateway",[])
+  await initialize(feeTokenBasedCustomGatewayTemplate,"L1OrbitCustomGateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
+  // const feeTokenBasedCustomGatewayTemplate =
+  //   await new L1OrbitCustomGateway__factory(l1Deployer).deploy()
+  // await feeTokenBasedCustomGatewayTemplate.deployed()
+  // await (
+  //   await feeTokenBasedCustomGatewayTemplate.initialize(
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD
+  //   )
+  // ).wait()
+
+  
   const upgradeExecutorFactory = new ethers.ContractFactory(
     UpgradeExecutorABI,
     UpgradeExecutorBytecode,
     l1Deployer
   )
-  const upgradeExecutor = await upgradeExecutorFactory.deploy()
-  await upgradeExecutor.deployed()
+  const upgradeExecutor = await deployContract(upgradeExecutorFactory,"upgradeExecutor",[])
+
+  // const upgradeExecutorFactory = new ethers.ContractFactory(
+  //   UpgradeExecutorABI,
+  //   UpgradeExecutorBytecode,
+  //   l1Deployer
+  // )
+  // const upgradeExecutor = await upgradeExecutorFactory.deploy()
+  // await upgradeExecutor.deployed()
 
   const l1Templates = {
     routerTemplate: routerTemplate.address,
@@ -384,72 +445,122 @@ export const deployL1TokenBridgeCreator = async (
   }
 
   /// deploy L2 contracts as placeholders on L1. Initialize them with dummy data
-  const l2TokenBridgeFactoryOnL1 =
-    await new L2AtomicTokenBridgeFactory__factory(l1Deployer).deploy()
-  await l2TokenBridgeFactoryOnL1.deployed()
+  const l2TokenBridgeFactoryOnL1Fac = new L2AtomicTokenBridgeFactory__factory(l1Deployer)
+  const l2TokenBridgeFactoryOnL1 = await deployContract(l2TokenBridgeFactoryOnL1Fac,"L2AtomicTokenBridgeFactory",[])
+  // const l2TokenBridgeFactoryOnL1 =
+  //   await new L2AtomicTokenBridgeFactory__factory(l1Deployer).deploy()
+  // await l2TokenBridgeFactoryOnL1.deployed()
 
-  const l2GatewayRouterOnL1 = await new L2GatewayRouter__factory(
-    l1Deployer
-  ).deploy()
-  await l2GatewayRouterOnL1.deployed()
-  await (
-    await l2GatewayRouterOnL1.initialize(ADDRESS_DEAD, ADDRESS_DEAD)
-  ).wait()
+  const l2GatewayRouterOnL1Fac = new L2GatewayRouter__factory(l1Deployer)
+  const l2GatewayRouterOnL1 = await deployContract(l2GatewayRouterOnL1Fac,"L2GatewayRouter",[])
+  await initialize(l2GatewayRouterOnL1,"L2GatewayRouter",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
+  // const l2GatewayRouterOnL1 = await new L2GatewayRouter__factory(
+  //   l1Deployer
+  // ).deploy()
+  // await l2GatewayRouterOnL1.deployed()
+  // await (
+  //   await l2GatewayRouterOnL1.initialize(ADDRESS_DEAD, ADDRESS_DEAD)
+  // ).wait()
 
-  const l2StandardGatewayAddressOnL1 = await new L2ERC20Gateway__factory(
-    l1Deployer
-  ).deploy()
-  await l2StandardGatewayAddressOnL1.deployed()
-  await (
-    await l2StandardGatewayAddressOnL1.initialize(
-      ADDRESS_DEAD,
+  const l2StandardGatewayAddressOnL1Fac = new L2ERC20Gateway__factory(l1Deployer)
+  const l2StandardGatewayAddressOnL1 = await deployContract(l2StandardGatewayAddressOnL1Fac,"L2ERC20Gateway",[])
+  await initialize(l2StandardGatewayAddressOnL1,"L2ERC20Gateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
+  // const l2StandardGatewayAddressOnL1 = await new L2ERC20Gateway__factory(
+  //   l1Deployer
+  // ).deploy()
+  // await l2StandardGatewayAddressOnL1.deployed()
+  // await (
+  //   await l2StandardGatewayAddressOnL1.initialize(
+  //     ADDRESS_DEAD,
+  //     ADDRESS_DEAD,
+  //     ADDRESS_DEAD
+  //   )
+  // ).wait()
+
+
+  const l2CustomGatewayAddressOnL1Fac = new L2CustomGateway__factory(l1Deployer)
+  const l2CustomGatewayAddressOnL1 = await deployContract(l2CustomGatewayAddressOnL1Fac,"L2CustomGateway",[])
+  await initialize(l2CustomGatewayAddressOnL1,"L2CustomGateway",[
       ADDRESS_DEAD,
       ADDRESS_DEAD
-    )
-  ).wait()
+  ])
+  // const l2CustomGatewayAddressOnL1 = await new L2CustomGateway__factory(
+  //   l1Deployer
+  // ).deploy()
+  // await l2CustomGatewayAddressOnL1.deployed()
+  // await (
+  //   await l2CustomGatewayAddressOnL1.initialize(ADDRESS_DEAD, ADDRESS_DEAD)
+  // ).wait()
 
-  const l2CustomGatewayAddressOnL1 = await new L2CustomGateway__factory(
-    l1Deployer
-  ).deploy()
-  await l2CustomGatewayAddressOnL1.deployed()
-  await (
-    await l2CustomGatewayAddressOnL1.initialize(ADDRESS_DEAD, ADDRESS_DEAD)
-  ).wait()
+  const l2WethGatewayAddressOnL1Fac = new L2WethGateway__factory(l1Deployer)
+  const l2WethGatewayAddressOnL1 = await deployContract(l2WethGatewayAddressOnL1Fac,"L2WethGateway",[])
+  await initialize(l2WethGatewayAddressOnL1,"L2WethGateway",[
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD,
+    ADDRESS_DEAD
+  ])
+  // const l2WethGatewayAddressOnL1 = await new L2WethGateway__factory(
+  //   l1Deployer
+  // ).deploy()
+  // await l2WethGatewayAddressOnL1.deployed()
+  // await (
+  //   await l2WethGatewayAddressOnL1.initialize(
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD,
+      // ADDRESS_DEAD
+  //   )
+  // ).wait()
 
-  const l2WethGatewayAddressOnL1 = await new L2WethGateway__factory(
-    l1Deployer
-  ).deploy()
-  await l2WethGatewayAddressOnL1.deployed()
-  await (
-    await l2WethGatewayAddressOnL1.initialize(
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD,
-      ADDRESS_DEAD
-    )
-  ).wait()
 
-  const l2WethAddressOnL1 = await new AeWETH__factory(l1Deployer).deploy()
-  await l2WethAddressOnL1.deployed()
+  const l2WethAddressOnL1Fac = new AeWETH__factory(l1Deployer)
+  const l2WethAddressOnL1 = await deployContract(l2WethAddressOnL1Fac,"AeWETH",[])
+  // const l2WethAddressOnL1 = await new AeWETH__factory(l1Deployer).deploy()
+  // await l2WethAddressOnL1.deployed()
 
-  const l1Multicall = await new Multicall2__factory(l1Deployer).deploy()
-  await l1Multicall.deployed()
+  const l1MulticallFac = new Multicall2__factory(l1Deployer)
+  const l1Multicall = await deployContract(l1MulticallFac,"Multicall2",[])
+  // const l1Multicall = await new Multicall2__factory(l1Deployer).deploy()
+  // await l1Multicall.deployed()
 
-  await (
-    await l1TokenBridgeCreator.setTemplates(
-      l1Templates,
-      l2TokenBridgeFactoryOnL1.address,
-      l2GatewayRouterOnL1.address,
-      l2StandardGatewayAddressOnL1.address,
-      l2CustomGatewayAddressOnL1.address,
-      l2WethGatewayAddressOnL1.address,
-      l2WethAddressOnL1.address,
-      l2MulticallAddressOnL1.address,
-      l1WethAddress,
-      l1Multicall.address,
-      gasLimitForL2FactoryDeployment
-    )
-  ).wait()
+  try {
+    await (
+      await l1TokenBridgeCreator.setTemplates(
+        l1Templates,
+        l2TokenBridgeFactoryOnL1.address,
+        l2GatewayRouterOnL1.address,
+        l2StandardGatewayAddressOnL1.address,
+        l2CustomGatewayAddressOnL1.address,
+        l2WethGatewayAddressOnL1.address,
+        l2WethAddressOnL1.address,
+        l2MulticallAddressOnL1.address,
+        l1WethAddress,
+        l1Multicall.address,
+        gasLimitForL2FactoryDeployment
+      )
+    ).wait()
+  } catch (error: any) {
+    if (error?.transactionHash) {
+      const receipt = await WaitTxReceiptByHash(
+        l1TokenBridgeCreator.signer.provider!,
+        error.transactionHash,
+        `l1TokenBridgeCreator setTemplates`
+      )
+      if (!receipt) {
+        throw error
+      }
+    } else {
+      throw error
+    }
+  }
 
   ///// verify contracts
   if (verifyContracts) {
