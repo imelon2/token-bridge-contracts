@@ -296,7 +296,7 @@ export const getLocalNetworks = async (
 }
 
 async function main() {
-  console.log('RUN Dkargo Token Bridge Script-dkargo-WaitTxReceiptByHash')
+  console.log('RUN Dkargo Token Bridge')
 
   const {
     l1Network,
